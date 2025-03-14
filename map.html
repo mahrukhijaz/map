@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Updated Parent Page</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+        }
+        .map-section {
+            flex: 1;
+            border: none;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .message-section {
+            height: 400px;
+            background-color: #f5f5f5;
+            padding: 20px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        .message {
+            background-color: white;
+            border-left: 4px solid #4285f4;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .control-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .command-button, .clear-button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            color: white;
+            border: none;
+        }
+        .command-button {
+            background-color: #4285f4;
+        }
+        .command-button:hover {
+            background-color: #2a75f3;
+        }
+        .clear-button {
+            background-color: #f44336;
+        }
+        .clear-button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <iframe id="map-iframe" class="map-section" src="https://natcox.github.io/weweb_map_poc/map.html" frameborder="0"></iframe>
+        
+        <div class="message-section">
+            <div class="control-buttons">
+                <button class="clear-button" id="clear-messages">Clear Messages</button>
+                <button class="command-button" onclick="sendCommandToMap({ type: 'set_center', lat: 40.7128, lng: -74.0060 })">New York</button>
+                <button class="command-button" onclick="sendCommandToMap({ type: 'set_center', lat: 34.0522, lng: -118.2437 })">Los Angeles</button>
+                <button class="command-button" onclick="sendCommandToMap({ type: 'set_center', lat: 51.5074, lng: -0.1278 })">London</button>
+                <button class="command-button" onclick="sendCommandToMap({ type: 'set_zoom', zoom: 15 })">Zoom In</button>
+                <button class="command-button" onclick="sendCommandToMap({ type: 'set_zoom', zoom: 8 })">Zoom Out</button>
+            </div>
+            <div id="message-container">
+                <div class="message">
+                    <strong>Welcome</strong><br>
+                    Interact with the map to see events displayed here.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const mapIframe = document.getElementById('map-iframe');
+        const messageContainer = document.getElementById('message-container');
+        const clearButton = document.getElementById('clear-messages');
+        
+        window.addEventListener('message', function(event) {
+            if (!event.data || !event.data.type) return;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            const now = new Date().toLocaleTimeString();
+            
+            if (event.data.type === 'map_state_change') {
+                messageElement.innerHTML = `<strong>Map State Changed</strong> (${now})<br>
+                    Zoom: ${event.data.zoom} | Lat: ${event.data.center.lat.toFixed(5)}, Lng: ${event.data.center.lng.toFixed(5)}`;
+            } else if (event.data.type === 'map_click') {
+                messageElement.innerHTML = `<strong>Map Clicked</strong> (${now})<br>
+                    Location: Lat: ${event.data.lat.toFixed(5)}, Lng: ${event.data.lng.toFixed(5)}`;
+            }
+            
+            messageContainer.insertBefore(messageElement, messageContainer.firstChild);
+        });
+        
+        clearButton.addEventListener('click', function() {
+            messageContainer.innerHTML = '<div class="message"><strong>Welcome</strong><br>Interact with the map to see events displayed here.</div>';
+        });
+        
+        function sendCommandToMap(command) {
+            mapIframe.contentWindow.postMessage(command, '*');
+        }
+    </script>
+</body>
+</html>
