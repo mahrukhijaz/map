@@ -3,122 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Updated Parent Page</title>
+    <title>Google Map</title>
     <style>
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
         }
-        .container {
-            display: flex;
-            flex-direction: column;
+        #map {
             height: 100%;
-            padding: 20px;
+            width: 100%;
         }
-        .map-section {
-            flex: 1;
-            border: none;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .message-section {
-            height: 400px;
-            background-color: #f5f5f5;
-            padding: 20px;
-            overflow-y: auto;
-            border-radius: 8px;
-        }
-        .message {
-            background-color: white;
-            border-left: 4px solid #4285f4;
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-        }
-        .control-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        .command-button, .clear-button {
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            color: white;
-            border: none;
-        }
-        .command-button {
-            background-color: #4285f4;
-        }
-        .command-button:hover {
-            background-color: #2a75f3;
-        }
-        .clear-button {
-            background-color: #f44336;
-        }
-        .clear-button:hover {
-            background-color: #d32f2f;
+        #error-message {
+            display: none;
+            text-align: center;
+            color: red;
+            font-size: 18px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <iframe id="map-iframe" class="map-section" src="https://natcox.github.io/weweb_map_poc/map.html" frameborder="0"></iframe>
-        
-        <div class="message-section">
-            <div class="control-buttons">
-                <button class="clear-button" id="clear-messages">Clear Messages</button>
-                <button class="command-button" onclick="sendCommandToMap({ type: 'set_center', lat: 40.7128, lng: -74.0060 })">New York</button>
-                <button class="command-button" onclick="sendCommandToMap({ type: 'set_center', lat: 34.0522, lng: -118.2437 })">Los Angeles</button>
-                <button class="command-button" onclick="sendCommandToMap({ type: 'set_center', lat: 51.5074, lng: -0.1278 })">London</button>
-                <button class="command-button" onclick="sendCommandToMap({ type: 'set_zoom', zoom: 15 })">Zoom In</button>
-                <button class="command-button" onclick="sendCommandToMap({ type: 'set_zoom', zoom: 8 })">Zoom Out</button>
-            </div>
-            <div id="message-container">
-                <div class="message">
-                    <strong>Welcome</strong><br>
-                    Interact with the map to see events displayed here.
-                </div>
-            </div>
-        </div>
-    </div>
-    
+    <div id="map"></div>
+    <p id="error-message">⚠️ Unable to load the map. Please check your API key and internet connection.</p>
+
     <script>
-        const mapIframe = document.getElementById('map-iframe');
-        const messageContainer = document.getElementById('message-container');
-        const clearButton = document.getElementById('clear-messages');
-        
-        window.addEventListener('message', function(event) {
-            if (!event.data || !event.data.type) return;
-            
-            const messageElement = document.createElement('div');
-            messageElement.className = 'message';
-            const now = new Date().toLocaleTimeString();
-            
-            if (event.data.type === 'map_state_change') {
-                messageElement.innerHTML = `<strong>Map State Changed</strong> (${now})<br>
-                    Zoom: ${event.data.zoom} | Lat: ${event.data.center.lat.toFixed(5)}, Lng: ${event.data.center.lng.toFixed(5)}`;
-            } else if (event.data.type === 'map_click') {
-                messageElement.innerHTML = `<strong>Map Clicked</strong> (${now})<br>
-                    Location: Lat: ${event.data.lat.toFixed(5)}, Lng: ${event.data.lng.toFixed(5)}`;
+        let map;
+        const trustedOrigin = "https://editor.weweb.io/ad2de6c3-41cf-4baa-8085-d6d3eee08dd0/285d561d-38b0-4e5a-b167-3c19667e6188"; // 🔒 Update this to your parent application's URL
+
+        function initMap() {
+            try {
+                console.log("Initializing Google Map...");
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: { lat: 37.7749, lng: -122.4194 }, // Default: San Francisco
+                    zoom: 12,
+                    fullscreenControl: false,
+                    mapTypeControl: false
+                });
+                console.log("Map initialized");
+
+                // Send initial map state to parent
+                sendMapState();
+
+                // Listen for map idle event (zoom/pan change)
+                map.addListener("idle", sendMapState);
+
+                // Listen for map click event
+                map.addListener("click", function(event) {
+                    const clickData = {
+                        type: "map_click",
+                        lat: event.latLng.lat(),
+                        lng: event.latLng.lng()
+                    };
+                    
+                    console.log("Map clicked:", clickData);
+                    sendMessageToParent(clickData);
+                });
+
+                // Listen for messages from the parent app
+                window.addEventListener("message", function(event) {
+                    if (event.origin === trustedOrigin) {
+                        handleParentMessage(event.data);
+                    } else {
+                        console.warn("Blocked message from untrusted origin:", event.origin);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing map:", error);
+                document.getElementById("map").style.display = "none";
+                document.getElementById("error-message").style.display = "block";
             }
-            
-            messageContainer.insertBefore(messageElement, messageContainer.firstChild);
-        });
-        
-        clearButton.addEventListener('click', function() {
-            messageContainer.innerHTML = '<div class="message"><strong>Welcome</strong><br>Interact with the map to see events displayed here.</div>';
-        });
-        
-        function sendCommandToMap(command) {
-            mapIframe.contentWindow.postMessage(command, '*');
+        }
+
+        function sendMapState() {
+            if (!map) return;
+
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            const bounds = map.getBounds();
+
+            const mapState = {
+                type: "map_state_change",
+                center: {
+                    lat: center.lat(),
+                    lng: center.lng()
+                },
+                zoom: zoom,
+                bounds: bounds ? {
+                    north: bounds.getNorthEast().lat(),
+                    east: bounds.getNorthEast().lng(),
+                    south: bounds.getSouthWest().lat(),
+                    west: bounds.getSouthWest().lng()
+                } : null
+            };
+
+            console.log("Map state changed:", mapState);
+            sendMessageToParent(mapState);
+        }
+
+        function sendMessageToParent(data) {
+            window.parent.postMessage(data, trustedOrigin);
+            console.log("Sent message to parent:", data);
+        }
+
+        function handleParentMessage(data) {
+            if (!map || !data) return;
+
+            if (data.type === "set_center" && data.lat && data.lng) {
+                map.setCenter({ lat: data.lat, lng: data.lng });
+            }
+            if (data.type === "set_zoom" && data.zoom) {
+                map.setZoom(data.zoom);
+            }
+            if (data.type === "pan_to" && data.lat && data.lng) {
+                map.panTo({ lat: data.lat, lng: data.lng });
+            }
         }
     </script>
+
+    <!-- Load Google Maps API (Replace with your actual API key) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
 </body>
 </html>
