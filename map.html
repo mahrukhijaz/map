@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Map</title>
+    <title>Interactive Map</title>
     <style>
         html, body {
             height: 100%;
@@ -14,65 +14,68 @@
             height: 100%;
             width: 100%;
         }
-        #error-message {
-            display: none;
-            text-align: center;
-            color: red;
-            font-size: 18px;
-            margin-top: 20px;
-        }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <p id="error-message">⚠️ Unable to load the map. Please check your API key and internet connection.</p>
 
     <script>
         let map;
-        const trustedOrigin = "https://editor.weweb.io/ad2de6c3-41cf-4baa-8085-d6d3eee08dd0/285d561d-38b0-4e5a-b167-3c19667e6188"; // 🔒 Update this to your parent application's URL
+        const trustedOrigin = "https://editor.weweb.io/ad2de6c3-41cf-4baa-8085-d6d3eee08dd0/285d561d-38b0-4e5a-b167-3c19667e6188"; // 🔒 Update this if needed
 
         function initMap() {
-            try {
-                console.log("Initializing Google Map...");
-                map = new google.maps.Map(document.getElementById("map"), {
-                    center: { lat: 37.7749, lng: -122.4194 }, // Default: San Francisco
-                    zoom: 12,
-                    fullscreenControl: false,
-                    mapTypeControl: false
-                });
-                console.log("Map initialized");
+            console.log("🗺️ Initializing Google Map...");
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 37.7749, lng: -122.4194 }, // Default to San Francisco
+                zoom: 12,
+                fullscreenControl: false,
+                mapTypeControl: false
+            });
 
-                // Send initial map state to parent
-                sendMapState();
+            console.log("✅ Map initialized");
 
-                // Listen for map idle event (zoom/pan change)
-                map.addListener("idle", sendMapState);
+            // Send initial map state
+            sendMapState();
 
-                // Listen for map click event
-                map.addListener("click", function(event) {
-                    const clickData = {
-                        type: "map_click",
-                        lat: event.latLng.lat(),
-                        lng: event.latLng.lng()
-                    };
-                    
-                    console.log("Map clicked:", clickData);
-                    sendMessageToParent(clickData);
-                });
+            // Send map state when user moves or zooms
+            map.addListener("idle", sendMapState);
 
-                // Listen for messages from the parent app
-                window.addEventListener("message", function(event) {
-                    if (event.origin === trustedOrigin) {
-                        handleParentMessage(event.data);
-                    } else {
-                        console.warn("Blocked message from untrusted origin:", event.origin);
-                    }
-                });
+            // Listen for map click events
+            map.addListener("click", function(event) {
+                const clickData = {
+                    type: "map_click",
+                    lat: event.latLng.lat(),
+                    lng: event.latLng.lng()
+                };
+                console.log("📍 Map clicked:", clickData);
+                sendMessageToParent(clickData);
+            });
 
-            } catch (error) {
-                console.error("Error initializing map:", error);
-                document.getElementById("map").style.display = "none";
-                document.getElementById("error-message").style.display = "block";
+            // Listen for messages from WeWeb
+            window.addEventListener("message", function(event) {
+                if (event.origin === trustedOrigin) {
+                    console.log("📩 Received message from WeWeb:", event.data);
+                    updateMap(event.data);
+                } else {
+                    console.warn("🚫 Blocked message from untrusted origin:", event.origin);
+                }
+            });
+        }
+
+        function updateMap(data) {
+            if (!map || !data) return;
+            console.log("🔄 Processing update:", data);
+
+            // Update center
+            if (data.center && data.center.lat !== undefined && data.center.lng !== undefined) {
+                console.log("📍 Setting new center:", data.center);
+                map.setCenter(new google.maps.LatLng(data.center.lat, data.center.lng));
+            }
+
+            // Update zoom
+            if (data.zoom !== undefined) {
+                console.log("🔍 Setting new zoom level:", data.zoom);
+                map.setZoom(data.zoom);
             }
         }
 
@@ -98,27 +101,13 @@
                 } : null
             };
 
-            console.log("Map state changed:", mapState);
+            console.log("🔄 Sending map state to WeWeb:", mapState);
             sendMessageToParent(mapState);
         }
 
         function sendMessageToParent(data) {
             window.parent.postMessage(data, trustedOrigin);
-            console.log("Sent message to parent:", data);
-        }
-
-        function handleParentMessage(data) {
-            if (!map || !data) return;
-
-            if (data.type === "set_center" && data.lat && data.lng) {
-                map.setCenter({ lat: data.lat, lng: data.lng });
-            }
-            if (data.type === "set_zoom" && data.zoom) {
-                map.setZoom(data.zoom);
-            }
-            if (data.type === "pan_to" && data.lat && data.lng) {
-                map.panTo({ lat: data.lat, lng: data.lng });
-            }
+            console.log("📤 Sent message to WeWeb:", data);
         }
     </script>
 
