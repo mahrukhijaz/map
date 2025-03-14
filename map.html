@@ -21,12 +21,11 @@
 
     <script>
         let map;
-        const trustedOrigin = "https://editor.weweb.io/ad2de6c3-41cf-4baa-8085-d6d3eee08dd0/285d561d-38b0-4e5a-b167-3c19667e6188"; // 🔒 Update this if needed
 
         function initMap() {
             console.log("🗺️ Initializing Google Map...");
             map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 37.7749, lng: -122.4194 }, // Default to San Francisco
+                center: { lat: 37.7749, lng: -122.4194 }, // Default: San Francisco
                 zoom: 12,
                 fullscreenControl: false,
                 mapTypeControl: false
@@ -51,14 +50,10 @@
                 sendMessageToParent(clickData);
             });
 
-            // Listen for messages from WeWeb
+            // Listen for messages from WeWeb (Removed Trusted Origin Check)
             window.addEventListener("message", function(event) {
-                if (event.origin === trustedOrigin) {
-                    console.log("📩 Received message from WeWeb:", event.data);
-                    updateMap(event.data);
-                } else {
-                    console.warn("🚫 Blocked message from untrusted origin:", event.origin);
-                }
+                console.log("📩 Received message from WeWeb:", event.data);
+                updateMap(event.data);
             });
         }
 
@@ -106,7 +101,7 @@
         }
 
         function sendMessageToParent(data) {
-            window.parent.postMessage(data, trustedOrigin);
+            window.parent.postMessage(data, "*"); // 🔥 Removed Trusted Origin
             console.log("📤 Sent message to WeWeb:", data);
         }
     </script>
